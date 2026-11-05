@@ -1,4 +1,4 @@
-# Opens a PR updating Casks/omarchy.rb when omacom/omarchy-mac-installer publishes
+# Bump workflow. Opens a PR updating Casks/omarchy.rb when omacom/omarchy-mac-installer publishes
 # a release (vX.Y.Z with its .dmg.sha256 asset). Runs hourly, on a
 # repository_dispatch "installer-released" event (payload {"version": "2.3.16"}),
 # or by hand. With no version given it takes the newest vX.Y.Z release, pre-releases
