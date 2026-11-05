@@ -1,0 +1,46 @@
+# Opens a PR updating Casks/omarchy.rb when omacom/omarchy-mac-installer publishes
+# a release (vX.Y.Z with its .dmg.sha256 asset). Runs hourly, on a
+# repository_dispatch "installer-released" event (payload {"version": "2.3.16"}),
+# or by hand. With no version given it takes the newest vX.Y.Z release, pre-releases
+# included, since installer releases are marked pre-release.
+name: Bump omarchy cask
+on:
+  repository_dispatch:
+    types: [installer-released]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Installer version, e.g. 2.3.16 (empty for the newest release)
+        required: false
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update version and checksum
+        env:
+          VERSION: ${{ github.event.client_payload.version || inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ -z $VERSION ]]; then
+            VERSION=$(gh release list -R omacom/omarchy-mac-installer --limit 30 --json tagName -q '.[].tagName' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -1)
+          fi
+          [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version: $VERSION"; exit 1; }
+          git ls-remote --exit-code origin "refs/heads/bump-omarchy-$VERSION" >/dev/null && { echo "PR branch for $VERSION exists"; exit 0; }
+          sum=$(gh release download "v$VERSION" -R omacom/omarchy-mac-installer \
+                  -p "Omarchy-Mac-Installer-$VERSION.dmg.sha256" -O - | awk '{print $1}')
+          [[ $sum =~ ^[0-9a-f]{64}$ ]] || { echo "no checksum for $VERSION"; exit 1; }
+          sed -i -E "s/^  version \".*\"/  version \"$VERSION\"/; s/^  sha256 \".*\"/  sha256 \"$sum\"/" Casks/omarchy.rb
+          git diff --quiet && { echo "already at $VERSION"; exit 0; }
+          git switch -c "bump-omarchy-$VERSION"
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com \
+            commit -am "omarchy $VERSION"
+          git push -u origin "bump-omarchy-$VERSION"
+          gh pr create --title "omarchy $VERSION" --body "Installer release v$VERSION."
