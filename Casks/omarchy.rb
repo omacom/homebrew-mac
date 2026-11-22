@@ -17,15 +17,6 @@ cask "omarchy" do
 
   app "Omarchy Installer.app"
 
-  # Open the installer right away so the next step is on screen. This also runs
-  # on `brew upgrade`, which reinstalls the app. Kept as postflight on purpose:
-  # postflight_steps runs sandboxed and can't launch apps through LaunchServices
-  # (tested 2026-11-05). Homebrew warns about postflight but runs it until
-  # 2027-12-11; revisit before then.
-  postflight do
-    system_command "/usr/bin/open", args: ["-a", "#{appdir}/Omarchy Installer.app"]
-  end
-
   # The app installs a privileged helper with SMJobBless when it first asks
   # for an administrator password. Remove it with the app.
   uninstall launchctl: "org.omarchy.installer.helper",
@@ -41,7 +32,13 @@ cask "omarchy" do
     "~/Library/Saved Application State/org.omarchy.installer.savedState",
   ]
 
+  # No auto-launch: postflight is deprecated, and postflight_steps runs sandboxed
+  # and can't open apps through LaunchServices. Give the full path: it honours
+  # --appdir, and `open -a` could match the Recovery copy bundled with the same name.
   caveats <<~EOS
+    To set up Omarchy, open Omarchy Installer:
+      open "#{appdir}/Omarchy Installer.app"
+
     Omarchy Installer sets up Omarchy next to macOS. It does not remove macOS.
     To remove Omarchy from this Mac later, open the app and choose Remove Omarchy
     before running `brew uninstall omarchy`.
