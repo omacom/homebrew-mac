@@ -4,7 +4,7 @@ cask "omarchy" do
 
   url "https://github.com/omacom/omarchy-mac-installer/releases/download/v#{version}/Omarchy-Mac-Installer-#{version}.dmg"
   name "Omarchy Installer"
-  desc "Dual-boot installer for Omarchy on Apple Silicon Macs"
+  desc "Installs Omarchy alongside macOS on Apple Silicon Macs"
   homepage "https://github.com/omacom/omarchy-mac-installer"
 
   # Installer releases are all marked pre-release, which `:github_latest` and
