@@ -7,24 +7,25 @@ cask "omarchy" do
   desc "Installs Omarchy alongside macOS on Apple Silicon Macs"
   homepage "https://github.com/omacom/omarchy-mac-installer"
 
+  # Installer releases are all marked pre-release, which `:github_latest` and
+  # the default `:github_releases` check skip. The regex leaves out the
+  # `engine-v…` and `catalog-…` tags in the same repository.
   livecheck do
     url :url
-    strategy :github_latest
+    regex(/^v?(\d+(?:\.\d+)+)$/i)
+    strategy :github_releases do |json, regex|
+      json.filter_map do |release|
+        next if release["draft"]
+
+        release["tag_name"]&.[](regex, 1)
+      end
+    end
   end
 
   depends_on arch: :arm64
   depends_on macos: :sequoia
 
   app "Omarchy Installer.app"
-
-  # Open the installer right away so the next step is on screen. This also runs
-  # on `brew upgrade`, which reinstalls the app. Kept as postflight on purpose:
-  # postflight_steps runs sandboxed and can't launch apps through LaunchServices
-  # (tested 2026-11-05). Homebrew warns about postflight but runs it until
-  # 2027-12-11; revisit before then.
-  postflight do
-    system_command "/usr/bin/open", args: ["-a", "#{appdir}/Omarchy Installer.app"]
-  end
 
   # The app installs a privileged helper with SMJobBless when it first asks
   # for an administrator password. Remove it with the app.
@@ -41,7 +42,14 @@ cask "omarchy" do
     "~/Library/Saved Application State/org.omarchy.installer.savedState",
   ]
 
+  # No auto-launch: postflight is deprecated, and postflight_steps runs sandboxed
+  # and can't open apps through LaunchServices. The caveat opens the app by its
+  # full path, which honours --appdir. `open -a "Omarchy Installer"` could pick
+  # the Recovery copy bundled inside the app, which has the same name.
   caveats <<~EOS
+    To set up Omarchy, open Omarchy Installer:
+      open "#{appdir}/Omarchy Installer.app"
+
     Omarchy Installer sets up Omarchy next to macOS. It does not remove macOS.
     To remove Omarchy from this Mac later, open the app and choose Remove Omarchy
     before running `brew uninstall omarchy`.
