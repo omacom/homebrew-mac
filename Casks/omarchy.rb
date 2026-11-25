@@ -33,8 +33,9 @@ cask "omarchy" do
   ]
 
   # No auto-launch: postflight is deprecated, and postflight_steps runs sandboxed
-  # and can't open apps through LaunchServices. Give the full path: it honours
-  # --appdir, and `open -a` could match the Recovery copy bundled with the same name.
+  # and can't open apps through LaunchServices. The caveat opens the app by its
+  # full path, which honours --appdir. `open -a "Omarchy Installer"` could pick
+  # the Recovery copy bundled inside the app, which has the same name.
   caveats <<~EOS
     To set up Omarchy, open Omarchy Installer:
       open "#{appdir}/Omarchy Installer.app"
