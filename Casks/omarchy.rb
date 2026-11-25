@@ -7,9 +7,19 @@ cask "omarchy" do
   desc "Installs Omarchy alongside macOS on Apple Silicon Macs"
   homepage "https://github.com/omacom/omarchy-mac-installer"
 
+  # Installer releases are all marked pre-release, which `:github_latest` and
+  # the default `:github_releases` check skip. The regex leaves out the
+  # `engine-v…` and `catalog-…` tags in the same repository.
   livecheck do
     url :url
-    strategy :github_latest
+    regex(/^v?(\d+(?:\.\d+)+)$/i)
+    strategy :github_releases do |json, regex|
+      json.filter_map do |release|
+        next if release["draft"]
+
+        release["tag_name"]&.[](regex, 1)
+      end
+    end
   end
 
   depends_on arch: :arm64
